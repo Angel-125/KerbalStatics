@@ -1,0 +1,25 @@
+﻿You'll need the Krav Publicizer
+https://github.com/krafs/Publicizer
+
+Go to Project-> Manage NuGet Packages.
+It should already be installed in this project, but you'll need it if you use this code in your own projects.
+
+Additionally, you'll need to edit your .proj file with a text editor (Notepad is sufficient).
+Add the following to your proj file (be sure to exit VisualStudio first):
+  <ItemGroup>
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.AddLaunchSite" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.createLaunchSiteObject" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.RemoveLaunchSite" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.launchSite" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.launchSiteObject" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.launchSiteObjectName" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.pqsCity2" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.PSystemSetup.mobileLaunchSitePrefab" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.PSystemSetup.SetupLaunchSites" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.PSystemSetup.SpawnAdditionalPrefabs" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.PSystemSetup.SpawnAdditionalPrefabs" />
+    <Publicize Include="Assembly-CSharp:LaunchSite.BundleName" />
+    <Publicize Include="Assembly-CSharp:FlagSite.siteName" />
+  </ItemGroup>
+
+  The above will pulicize the necessary methods and fields that this code uses.

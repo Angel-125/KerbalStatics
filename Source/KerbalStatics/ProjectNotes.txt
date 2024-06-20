@@ -13,13 +13,21 @@ Add the following to your proj file (be sure to exit VisualStudio first):
     <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.launchSite" />
     <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.launchSiteObject" />
     <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.launchSiteObjectName" />
+    <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.createLaunchSiteObject" />
     <Publicize Include="Assembly-CSharp:Expansions.Missions.LaunchSiteSituation.pqsCity2" />
-    <Publicize Include="Assembly-CSharp:Expansions.Missions.PSystemSetup.mobileLaunchSitePrefab" />
-    <Publicize Include="Assembly-CSharp:Expansions.Missions.PSystemSetup.SetupLaunchSites" />
-    <Publicize Include="Assembly-CSharp:Expansions.Missions.PSystemSetup.SpawnAdditionalPrefabs" />
-    <Publicize Include="Assembly-CSharp:Expansions.Missions.PSystemSetup.SpawnAdditionalPrefabs" />
+    <Publicize Include="Assembly-CSharp:Expansions.BundleLoader.LoadAsset" />
+    <Publicize Include="Assembly-CSharp:PSystemSetup.mobileLaunchSitePrefab" />
+    <Publicize Include="Assembly-CSharp:PSystemSetup.SetupLaunchSites" />
+    <Publicize Include="Assembly-CSharp:PSystemSetup.SpawnAdditionalPrefabs" />
+    <Publicize Include="Assembly-CSharp:PSystemSetup.pqsArray" />
+    <Publicize Include="Assembly-CSharp:PQSCity2.SetBody" />
+    <Publicize Include="Assembly-CSharp:PQSCity2.Reset" />
     <Publicize Include="Assembly-CSharp:LaunchSite.BundleName" />
+    <Publicize Include="Assembly-CSharp:LaunchSite.prefabPath" />
+    <Publicize Include="Assembly-CSharp:LaunchSite.additionalprefabPaths" />
+    <Publicize Include="Assembly-CSharp:LaunchSite.isSetup" />
     <Publicize Include="Assembly-CSharp:FlagSite.siteName" />
+    <Publicize Include="Assembly-CSharp:EditorDriver.validLaunchSites" />
   </ItemGroup>
 
   The above will pulicize the necessary methods and fields that this code uses.

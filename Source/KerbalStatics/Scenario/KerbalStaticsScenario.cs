@@ -3,7 +3,10 @@ using KSP.IO;
 using KSP.Localization;
 using System.IO;
 using System.Collections;
+using Expansions;
 using Expansions.Missions;
+using Expansions.Missions.Scenery.Scripts;
+using CommNet;
 using System.Collections.Generic;
 
 namespace KerbalStatics
@@ -20,11 +23,47 @@ namespace KerbalStatics
         const string kBundleNameField = "BundleName";
         #endregion
 
+        #region Fields
+        #endregion
+
+        #region Custom Events
+        /// <summary>
+        /// Tells listeners that a new Site is about to be created.
+        /// </summary>
+        public static EventData<FlagSite, EditorFacility> onWillSetupNewSite = new EventData<FlagSite, EditorFacility>("onWillSetupNewSite");
+
+        /// <summary>
+        /// Tells listeners that a new Site is about to be created.
+        /// </summary>
+        public static EventData<FlagSite, EditorFacility> onSiteEstablished = new EventData<FlagSite, EditorFacility>("onSiteEstablished");
+        #endregion
+
         #region Housekeeping
+        /// <summary>
+        /// Shared instance of the scenario
+        /// </summary>
         public static KerbalStaticsScenario shared;
+
+        /// <summary>
+        /// Flag to allow creation of launchpads
+        /// </summary>
         public bool allowVABSetup = true;
+
+        /// <summary>
+        ///  Flag to allow creation of runways
+        /// </summary>
         public bool allowSPHSetup = true;
+
+        /// <summary>
+        /// Flag to allow creation of colonies (No facility type; won't appear in the launch sites lists)
+        /// </summary>
         public bool allowColonySetup = false;
+
+        /// <summary>
+        /// Flag to indicate whether or not to abort site creation. This is checked after a call to onWillSetupNewSite.
+        /// </summary>
+        public bool abortSiteCreation = false;
+
         string saveFolder = string.Empty;
         string staticsFolder = string.Empty;
         string launchSitesFolder = string.Empty;
@@ -95,6 +134,63 @@ namespace KerbalStatics
 
         void afterFlagPlanted(FlagSite flag)
         {
+        }
+        #endregion
+
+        #region API
+        public void convertFlagToSite(FlagSite flag, EditorFacility facility = EditorFacility.None)
+        {
+            // Inform listeners that we're about to set up a new site.
+            onWillSetupNewSite.Fire(flag, facility);
+            if (abortSiteCreation)
+            {
+                abortSiteCreation = false;
+                Debug.Log("[KerbalStaticsScenario] - Aborting site creation.");
+                return;
+            }
+
+            // Get the longitude, latitude, and altitude
+            double longitude = flag.vessel.longitude;
+            double latitude = flag.vessel.latitude;
+            double altitude = flag.vessel.altitude;
+
+            // Get the name of the site
+            string siteTitle = flag.siteName;
+            Debug.Log("[KerbalStaticsScenario] - flag.PlaqueText: " + flag.PlaqueText);
+            Debug.Log("[KerbalStaticsScenario] - New Site will be named: " + siteTitle);
+
+            // Create vessel ground location
+            VesselGroundLocation groundLocation = new VesselGroundLocation();
+            groundLocation.longitude = longitude;
+            groundLocation.latitude = latitude;
+            groundLocation.altitude = altitude;
+            groundLocation.targetBody = flag.vessel.mainBody;
+            groundLocation.gizmoIcon = VesselGroundLocation.GizmoIcon.LaunchSite;
+
+            // Create launch site situation
+            LaunchSiteSituation launchSiteSituation = new LaunchSiteSituation(null);
+            launchSiteSituation.launchSiteName = siteTitle;
+            launchSiteSituation.launchSiteObjectName = siteTitle;
+            launchSiteSituation.facility = facility;
+            launchSiteSituation.showRamp = true;
+            launchSiteSituation.splashed = flag.vessel.Splashed;
+            launchSiteSituation.launchSiteGroundLocation = groundLocation;
+
+            // Create the filename for the new static
+            string filePath = $"{launchSitesFolder}/{siteTitle}.txt";
+
+            // Save the kerbal static node
+            ConfigNode staticNode = new ConfigNode("root");
+            ConfigNode node = staticNode.AddNode(kKerbalStaticNode);
+            launchSiteSituation.Save(node);
+            staticNode.Save(filePath);
+
+            // Delete the flag
+            flag.vessel.Die();
+
+            // Inform the player
+            string message = Localizer.Format("#LOC_KERBALSTATICS_siteCreated", new string[] { siteTitle });
+            ScreenMessages.PostScreenMessage(message, 5f, ScreenMessageStyle.UPPER_CENTER);
         }
         #endregion
 
@@ -199,10 +295,19 @@ namespace KerbalStatics
 
                                 // Set the bundle identifier. This is where the 3D models will be located.
                                 launchSiteSituation.launchSite.BundleName = bundleName;
+
+                                if (launchSiteSituation.facility == EditorFacility.SPH)
+                                    launchSiteSituation.launchSite.prefabPath = "Assets/Expansions/Missions/Scenery/Desert_Airfield.prefab";
                             }
                         }
                     }
                 }
+            }
+
+            if (pSystemSetup.GetLaunchSite("THIS IS A TEST!") == null)
+            {
+//                yield return createLaunchSite();
+                yield return createTestLaunchSite();
             }
 
             // Now list out the launch sites.
@@ -211,59 +316,277 @@ namespace KerbalStatics
             int count = pSystemSetup.LaunchSites.Count;
             for (int index = 0; index < count; index++)
             {
-                Debug.Log("[KerbalStaticsScenario] - Launch Site: " + Localizer.Format(pSystemSetup.LaunchSites[index].launchSiteName));
+                launchSite = pSystemSetup.LaunchSites[index];
+                Debug.Log("[KerbalStaticsScenario] - Launch Site: " + Localizer.Format(launchSite.launchSiteName));
+
+                if (!string.IsNullOrEmpty(launchSite.prefabPath))
+                    Debug.Log("[KerbalStaticsScenario] - Prefab path: " + launchSite.prefabPath);
+
+                if (launchSite.additionalprefabPaths != null && launchSite.additionalprefabPaths.Length > 0)
+                {
+                    for (int prefabIndex = 0; prefabIndex < launchSite.additionalprefabPaths.Length; prefabIndex++)
+                    {
+                        Debug.Log("[KerbalStaticsScenario] - Additional Prefab: " + launchSite.additionalprefabPaths[prefabIndex]);
+                    }
+                }
+
+                if (launchSite.spawnPoints[0] != null)
+                    Debug.Log("[KerbalStaticsScenario] - Additional spawnTransformURL:" + launchSite.spawnPoints[0].spawnTransformURL);
+            }
+
+            count = PSystemSetup.Instance.LaunchSites.Count;
+            LaunchSite site = null;
+            for (int index = 0; index < count; index++)
+            {
+                if (PSystemSetup.Instance.LaunchSites[index].launchSiteName == "THIS IS A TEST!")
+                {
+                    Debug.Log("[KerbalStaticsScenario] - Found test site");
+                    site = PSystemSetup.Instance.LaunchSites[index];
+                    break;
+                }
+            }
+            if (site != null && !EditorDriver.ValidLaunchSite("THIS IS A TEST!"))
+            {
+                Debug.Log("[KerbalStaticsScenario] - Added test site to valid sites");
+                EditorDriver.validLaunchSites.Add(site.launchSiteName);
+            }
+
+            count = EditorDriver.ValidLaunchSites.Count;
+            for (int index = 0; index < count; index++)
+            {
+                Debug.Log("[KerbalStaticsScenario] - Valid launch site:" + EditorDriver.ValidLaunchSites[index]);
             }
 
             yield return null;
         }
 
-        #endregion
-
-        public void convertFlagToSite(FlagSite flag, EditorFacility facility = EditorFacility.None)
+        private IEnumerator createTestLaunchSite()
         {
-            // Get the longitude, latitude, and altitude
-            double longitude = flag.vessel.longitude;
-            double latitude = flag.vessel.latitude;
-            double altitude = flag.vessel.altitude;
+            Debug.Log("[KerbalStaticsScenario] - createTestLaunchSite called");
+            string launchSiteName = "THIS IS A TEST!";
+            string launchSiteObjectName = KSPUtil.SanitizeString(launchSiteName, '_', false);
+            launchSiteObjectName = launchSiteObjectName.Replace(' ', '_');
+            EditorFacility facility = EditorFacility.SPH;
+            VesselGroundLocation launchSiteGroundLocation = new VesselGroundLocation(null, VesselGroundLocation.GizmoIcon.LaunchSite);
+            bool splashed = false;
 
-            // Get the name of the site
-            string siteTitle = flag.siteName;
-            Debug.Log("[KerbalStaticsScenario] - flag.PlaqueText: " + flag.PlaqueText);
-            Debug.Log("[KerbalStaticsScenario] - New Site will be named: " + siteTitle);
+            launchSiteGroundLocation.longitude = -74.624866465585896;
+            launchSiteGroundLocation.latitude = 0.024871869003237842;
+            launchSiteGroundLocation.altitude = 64.292673222022131;
+            launchSiteGroundLocation.targetBody = FlightGlobals.GetBodyByName("Kerbin");
+            launchSiteGroundLocation.GAPGizmoIcon = VesselGroundLocation.GizmoIcon.LaunchSite;
 
-            // Create vessel ground location
-            VesselGroundLocation groundLocation = new VesselGroundLocation();
-            groundLocation.longitude = longitude;
-            groundLocation.latitude = latitude;
-            groundLocation.altitude = altitude;
-            groundLocation.targetBody = flag.vessel.mainBody;
-            groundLocation.gizmoIcon = VesselGroundLocation.GizmoIcon.LaunchSite;
+            if (ExpansionsLoader.IsExpansionInstalled("MakingHistory"))
+            {
+                GameObject launchSiteObject = BundleLoader.LoadAsset<PQSCity2>("makinghistory_assets", "Assets/Expansions/Missions/Scenery/Desert_Airfield.prefab") as GameObject;
+                if (launchSiteObject != null)
+                {
+                    Debug.Log("[KerbalStaticsScenario] - Got launchSiteObject");
+                    PQSCity2 pqsCity2 = launchSiteObject.GetComponent<PQSCity2>();
+                    if (pqsCity2 == null)
+                    {
+                        pqsCity2 = launchSiteObject.AddComponent<PQSCity2>();
+                    }
+                    launchSiteObject.name = launchSiteObjectName;
+                    if (pqsCity2 != null)
+                    {
+                        Debug.Log("[KerbalStaticsScenario] - Has pqsCity2");
+                        pqsCity2.objectName = launchSiteObjectName;
+                        pqsCity2.displayobjectName = launchSiteName;
+                        if (pqsCity2.crashObjectName)
+                        {
+                            pqsCity2.crashObjectName.objectName = pqsCity2.objectName;
+                            pqsCity2.crashObjectName.displayName = Localizer.Format(pqsCity2.displayobjectName);
+                        }
+                        pqsCity2.lon = launchSiteGroundLocation.longitude;
+                        pqsCity2.lat = launchSiteGroundLocation.latitude;
+                        for (int index = 0; index < PSystemSetup.Instance.pqsArray.Length; ++index)
+                        {
+                            if (PSystemSetup.Instance.pqsArray[index].gameObject.name == launchSiteGroundLocation.targetBody.bodyName)
+                            {
+                                pqsCity2.transform.SetParent(PSystemSetup.Instance.pqsArray[index].gameObject.transform);
+                                pqsCity2.sphere = PSystemSetup.Instance.pqsArray[index];
+                                Debug.Log("[KerbalStaticsScenario] - Found targetBody.bodyName: " + launchSiteGroundLocation.targetBody.bodyName);
+                                break;
+                            }
+                        }
+                        pqsCity2.rotation = (double)launchSiteGroundLocation.rotation.eulerAngles.z;
+                        LaunchSite launchSite = new LaunchSite(launchSiteObjectName, launchSiteGroundLocation.targetBody.bodyName, launchSiteName, new LaunchSite.SpawnPoint[1]
+                        {
+                            new LaunchSite.SpawnPoint()
+                            {
+                                name = launchSiteObjectName,
+                                spawnTransformURL = "Model/End27/SpawnPoint"
+                            }
+                        }, launchSiteObjectName, facility);
+                        if (launchSite != null)
+                        {
+                            if (launchSite.Setup(pqsCity2, PSystemSetup.Instance.pqsArray))
+                            {
+                                Debug.Log("[KerbalStaticsScenario] - Setup successful");
+                                PSystemSetup.Instance.AddLaunchSite(launchSite);
+                            }
 
-            // Create launch site situation
-            LaunchSiteSituation launchSiteSituation = new LaunchSiteSituation(null);
-            launchSiteSituation.launchSiteName = siteTitle;
-            launchSiteSituation.launchSiteObjectName = siteTitle;
-            launchSiteSituation.facility = facility;
-            launchSiteSituation.showRamp = true;
-            launchSiteSituation.splashed = flag.vessel.Splashed;
-            launchSiteSituation.launchSiteGroundLocation = groundLocation;
+                            launchSite.requiresPOIVisit = false;
+                            // Must set and be either stock or makinghistory_assets
+                            //launchSite.BundleName = kDefaultBundleName;
 
-            // Create the filename for the new static
-            string filePath = $"{launchSitesFolder}/{siteTitle}.txt";
-
-            // Save the kerbal static node
-            ConfigNode staticNode = new ConfigNode("root");
-            ConfigNode node = staticNode.AddNode(kKerbalStaticNode);
-            launchSiteSituation.Save(node);
-            staticNode.Save(filePath);
-
-            // Delete the flag
-            flag.vessel.Die();
-
-            // Inform the player
-            string message = Localizer.Format("#LOC_KERBALSTATICS_siteCreated", new string[] { siteTitle });
-            ScreenMessages.PostScreenMessage(message, 5f, ScreenMessageStyle.UPPER_CENTER);
+                            pqsCity2.launchSite = launchSite;
+                        }
+                        yield return null;
+                        pqsCity2.SetBody();
+                        if (pqsCity2.celestialBody != null)
+                        {
+                            Debug.Log("[KerbalStaticsScenario] - pqsCity2.celestialBody != null");
+                            Planetarium.CelestialFrame cf = new Planetarium.CelestialFrame();
+                            Planetarium.CelestialFrame.SetFrame(0.0, 0.0, 0.0, ref cf);
+                            pqsCity2.transform.localPosition = LatLon.GetSurfaceNVector(cf, pqsCity2.lat, pqsCity2.lon) * (pqsCity2.sphere.radius + pqsCity2.alt);
+                            pqsCity2.setOnWaterSurface = splashed;
+                            pqsCity2.Reset();
+                            if (launchSite.positionMobileLaunchPad != null)
+                            {
+                                Debug.Log("[KerbalStaticsScenario] - launchSite.positionMobileLaunchPad != null");
+                                launchSite.positionMobileLaunchPad.ResetPositioning();
+                                launchSite.positionMobileLaunchPad.launchSite = launchSite;
+                            }
+                            pqsCity2.Orientate();
+                            yield return null;
+                        }
+                    }
+                    CommNetHome component2 = launchSiteObject.GetComponent<CommNetHome>();
+                    if (component2 == null)
+                    {
+                        component2 = launchSiteObject.AddComponent<CommNetHome>();
+                    }
+                    if (component2 != null)
+                    {
+                        Debug.Log("[KerbalStaticsScenario] - Has CommNetHome");
+                        component2.displaynodeName = launchSiteName;
+                        component2.nodeName = launchSiteGroundLocation.targetBody.bodyName + ": " + launchSiteObjectName;
+                    }
+                }
+            }
+            yield return null;
         }
+
+        private IEnumerator createLaunchSite()
+        {
+            Debug.Log("[KerbalStaticsScenario] - createLaunchSite called");
+            bool showRamp = true;
+            string launchSiteName = "THIS IS A TEST!";
+            string launchSiteObjectName = KSPUtil.SanitizeString(launchSiteName, '_', false);
+            launchSiteObjectName = launchSiteObjectName.Replace(' ', '_');
+//            EditorFacility facility = EditorFacility.VAB;
+            EditorFacility facility = EditorFacility.SPH;
+            VesselGroundLocation launchSiteGroundLocation = new VesselGroundLocation(null, VesselGroundLocation.GizmoIcon.LaunchSite);
+            bool splashed = false;
+
+            launchSiteGroundLocation.longitude = -74.624866465585896;
+            launchSiteGroundLocation.latitude = 0.024871869003237842;
+            launchSiteGroundLocation.altitude = 64.292673222022131;
+            launchSiteGroundLocation.targetBody = FlightGlobals.GetBodyByName("Kerbin");
+            launchSiteGroundLocation.GAPGizmoIcon = VesselGroundLocation.GizmoIcon.LaunchSite;
+
+            if (ExpansionsLoader.IsExpansionInstalled("MakingHistory"))
+            {
+                GameObject launchSiteObject = BundleLoader.LoadAsset<PQSCity2>("makinghistory_assets", "Assets/Expansions/Missions/Scenery/Desert_Airfield.prefab") as GameObject;
+//                GameObject launchSiteObject = Instantiate(PSystemSetup.Instance.mobileLaunchSitePrefab);
+                if (launchSiteObject != null)
+                {
+                    Debug.Log("[KerbalStaticsScenario] - Got launchSiteObject");
+                    PositionMobileLaunchPad component1 = launchSiteObject.GetComponent<PositionMobileLaunchPad>();
+                    if (component1 != null)
+                    {
+                        component1.hideRampOverMax = !showRamp;
+                        Debug.Log("[KerbalStaticsScenario] - showing ramp");
+                    }
+                    PQSCity2 pqsCity2 = launchSiteObject.GetComponent<PQSCity2>();
+                    if (pqsCity2 == null)
+                    {
+                        pqsCity2 = launchSiteObject.AddComponent<PQSCity2>();
+                    }
+                    launchSiteObject.name = launchSiteObjectName;
+                    if (pqsCity2 != null)
+                    {
+                        Debug.Log("[KerbalStaticsScenario] - Has pqsCity2");
+                        pqsCity2.objectName = launchSiteObjectName;
+                        pqsCity2.displayobjectName = launchSiteName;
+                        if (pqsCity2.crashObjectName)
+                        {
+                            pqsCity2.crashObjectName.objectName = pqsCity2.objectName;
+                            pqsCity2.crashObjectName.displayName = Localizer.Format(pqsCity2.displayobjectName);
+                        }
+                        pqsCity2.lat = launchSiteGroundLocation.latitude;
+                        pqsCity2.lon = launchSiteGroundLocation.longitude;
+                        for (int index = 0; index < PSystemSetup.Instance.pqsArray.Length; ++index)
+                        {
+                            if (PSystemSetup.Instance.pqsArray[index].gameObject.name == launchSiteGroundLocation.targetBody.bodyName)
+                            {
+                                pqsCity2.transform.SetParent(PSystemSetup.Instance.pqsArray[index].gameObject.transform);
+                                pqsCity2.sphere = PSystemSetup.Instance.pqsArray[index];
+                                Debug.Log("[KerbalStaticsScenario] - Found targetBody.bodyName: " + launchSiteGroundLocation.targetBody.bodyName);
+                                break;
+                            }
+                        }
+                        pqsCity2.rotation = (double)launchSiteGroundLocation.rotation.eulerAngles.z;
+                        LaunchSite launchSite = new LaunchSite(launchSiteObjectName, launchSiteGroundLocation.targetBody.bodyName, launchSiteName, new LaunchSite.SpawnPoint[1]
+                        {
+                            new LaunchSite.SpawnPoint()
+                            {
+                                name = launchSiteObjectName,
+//                                spawnTransformURL = "SpawnPoint"
+                                spawnTransformURL = "Model/End27/SpawnPoint"
+                            }
+                        }, launchSiteObjectName, facility);
+                        if (launchSite != null)
+                        {
+                            if (launchSite.Setup(pqsCity2, PSystemSetup.Instance.pqsArray))
+                            {
+                                Debug.Log("[KerbalStaticsScenario] - Setup successful");
+                                PSystemSetup.Instance.AddLaunchSite(launchSite);
+                            }
+
+                            launchSite.requiresPOIVisit = false;
+                            launchSite.BundleName = kDefaultBundleName;
+
+                            pqsCity2.launchSite = launchSite;
+                        }
+                        yield return null;
+                        pqsCity2.SetBody();
+                        if (pqsCity2.celestialBody != null)
+                        {
+                            Debug.Log("[KerbalStaticsScenario] - pqsCity2.celestialBody != null");
+                            Planetarium.CelestialFrame cf = new Planetarium.CelestialFrame();
+                            Planetarium.CelestialFrame.SetFrame(0.0, 0.0, 0.0, ref cf);
+                            pqsCity2.transform.localPosition = LatLon.GetSurfaceNVector(cf, pqsCity2.lat, pqsCity2.lon) * (pqsCity2.sphere.radius + pqsCity2.alt);
+                            pqsCity2.setOnWaterSurface = splashed;
+                            pqsCity2.Reset();
+                            if (launchSite.positionMobileLaunchPad != null)
+                            {
+                                Debug.Log("[KerbalStaticsScenario] - launchSite.positionMobileLaunchPad != null");
+                                launchSite.positionMobileLaunchPad.ResetPositioning();
+                                launchSite.positionMobileLaunchPad.launchSite = launchSite;
+                            }
+                            pqsCity2.Orientate();
+                            yield return null;
+                        }
+                    }
+                    CommNetHome component2 = launchSiteObject.GetComponent<CommNetHome>();
+                    if (component2 == null)
+                    {
+                        component2 = launchSiteObject.AddComponent<CommNetHome>();
+                    }
+                    if (component2 != null)
+                    {
+                        Debug.Log("[KerbalStaticsScenario] - Has CommNetHome");
+                        component2.displaynodeName = launchSiteName;
+                        component2.nodeName = launchSiteGroundLocation.targetBody.bodyName + ": " + launchSiteObjectName;
+                    }
+                }
+            }
+            yield return null;
+        }
+        #endregion
 
         #endregion
     }

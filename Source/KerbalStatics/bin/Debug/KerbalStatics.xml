@@ -4,5 +4,40 @@
         <name>KerbalStatics</name>
     </assembly>
     <members>
+        <member name="F:KerbalStatics.KerbalStaticsScenario.onWillSetupNewSite">
+            <summary>
+            Tells listeners that a new Site is about to be created.
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.KerbalStaticsScenario.onSiteEstablished">
+            <summary>
+            Tells listeners that a new Site is about to be created.
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.KerbalStaticsScenario.shared">
+            <summary>
+            Shared instance of the scenario
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.KerbalStaticsScenario.allowVABSetup">
+            <summary>
+            Flag to allow creation of launchpads
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.KerbalStaticsScenario.allowSPHSetup">
+            <summary>
+             Flag to allow creation of runways
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.KerbalStaticsScenario.allowColonySetup">
+            <summary>
+            Flag to allow creation of colonies (No facility type; won't appear in the launch sites lists)
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.KerbalStaticsScenario.abortSiteCreation">
+            <summary>
+            Flag to indicate whether or not to abort site creation. This is checked after a call to onWillSetupNewSite.
+            </summary>
+        </member>
     </members>
 </doc>

@@ -39,5 +39,56 @@
             Flag to indicate whether or not to abort site creation. This is checked after a call to onWillSetupNewSite.
             </summary>
         </member>
+        <member name="T:KerbalStatics.Statics.KerbalStaticSite">
+            <summary>
+            Represents a site at which statics will be placed.
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.Statics.KerbalStaticSite.kNodeName">
+            <summary>
+            Name of the config node
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.Statics.KerbalStaticSite.longitude">
+            <summary>
+            Site location longitude
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.Statics.KerbalStaticSite.latitude">
+            <summary>
+            Site location latitude
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.Statics.KerbalStaticSite.altitude">
+            <summary>
+            Site location altitude
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.Statics.KerbalStaticSite.rotation">
+            <summary>
+            Rotation of the site
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.Statics.KerbalStaticSite.bundleIdentifier">
+            <summary>
+            Bundle identifier (if any)
+            </summary>
+        </member>
+        <member name="F:KerbalStatics.Statics.KerbalStaticSite.facility">
+            <summary>
+            Type of facility
+            </summary>
+        </member>
+        <member name="M:KerbalStatics.Statics.KerbalStaticSite.#ctor">
+            <summary>
+            Default constructor
+            </summary>
+        </member>
+        <member name="M:KerbalStatics.Statics.KerbalStaticSite.#ctor(ConfigNode)">
+            <summary>
+            Constructs a new site via the config node.
+            </summary>
+            <param name="node">A ConfigNode to parse</param>
+        </member>
     </members>
 </doc>

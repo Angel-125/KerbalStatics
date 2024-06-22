@@ -52,7 +52,7 @@ namespace KerbalStatics
         /// <summary>
         ///  Flag to allow creation of runways
         /// </summary>
-        public bool allowSPHSetup = true;
+        public bool allowSPHSetup = false;
 
         /// <summary>
         /// Flag to allow creation of colonies (No facility type; won't appear in the launch sites lists)
@@ -302,12 +302,6 @@ namespace KerbalStatics
                         }
                     }
                 }
-            }
-
-            if (pSystemSetup.GetLaunchSite("THIS IS A TEST!") == null)
-            {
-//                yield return createLaunchSite();
-                yield return createTestLaunchSite();
             }
 
             // Now list out the launch sites.

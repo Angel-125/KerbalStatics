@@ -113,6 +113,8 @@
     <Compile Include="PartModules\ModuleFlagSiteSetup.cs" />
     <Compile Include="Scenario\KerbalStaticsScenario.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Statics\KerbalStatic.cs" />
+    <Compile Include="Statics\KerbalStaticSite.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
